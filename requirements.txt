@@ -1,2 +1,5 @@
-streamlit
-openai
+numpy 
+matplotlib 
+scipy 
+streamlit 
+plotly
