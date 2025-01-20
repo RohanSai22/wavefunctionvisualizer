@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.constants import hbar
-from scipy.linalg import expm
+from scipy.linalg import solve  # Updated from `expm` to `solve` for stability
 import streamlit as st
 import plotly.graph_objects as go
 
@@ -9,15 +9,27 @@ import plotly.graph_objects as go
 mass = 1.0  # Mass of the particle
 
 def normalize_wave_function(psi, dx):
+    """
+    Normalize the wave function to ensure its total probability is 1.
+    If the norm is zero (e.g., due to numerical issues), return the original psi to avoid division by zero.
+    """
     norm = np.sqrt(np.sum(np.abs(psi)**2) * dx)
+    if norm == 0:  # Handle potential numerical issues
+        return psi
     return psi / norm
 
 def initialize_wave_packet(x, x0, k0, sigma):
-    norm = (1 / (np.sqrt(sigma * np.sqrt(np.pi))))
-    wave_packet = norm * np.exp(-((x - x0) ** 2) / (2 * sigma ** 2)) * np.exp(1j * k0 * x)
+    """
+    Initialize a Gaussian wave packet with the specified parameters.
+    """
+    norm = 1 / np.sqrt(sigma * np.sqrt(2 * np.pi))  # Corrected normalization factor
+    wave_packet = norm * np.exp(-((x - x0)**2) / (2 * sigma**2)) * np.exp(1j * k0 * x)
     return wave_packet
 
 def hamiltonian(x, V):
+    """
+    Construct the Hamiltonian matrix, consisting of kinetic and potential energy terms.
+    """
     dx = x[1] - x[0]
     N = len(x)
     kinetic = -(hbar**2 / (2 * mass)) * (
@@ -27,10 +39,20 @@ def hamiltonian(x, V):
     return kinetic + potential
 
 def evolve_wave_function(psi, H, dt):
-    U = expm(-1j * H * dt / hbar)
-    return U @ psi
+    """
+    Perform time evolution of the wave function using the Crank-Nicolson method for stability.
+    Changed from using `expm` to solving the linear equation `Aψ_(n+1) = Bψ_n`.
+    """
+    I = np.eye(len(psi))  # Identity matrix
+    a = I - 1j * dt / 2 * H  # A matrix for Crank-Nicolson method
+    b = I + 1j * dt / 2 * H  # B matrix for Crank-Nicolson method
+    psi_new = solve(a, b @ psi)  # Solving Aψ_(n+1) = Bψ_n for ψ_(n+1)
+    return psi_new
 
 def plot_wave_function(x, psi, title):
+    """
+    Plot the wave function components: real, imaginary, and magnitude parts.
+    """
     fig, ax = plt.subplots(figsize=(8, 4))
     ax.plot(x, psi.real, label="Real Part", color="blue")
     ax.plot(x, psi.imag, label="Imaginary Part", color="red")
@@ -44,6 +66,9 @@ def plot_wave_function(x, psi, title):
     st.pyplot(fig)
 
 def interactive_3d_visualization(x, psi):
+    """
+    Create an interactive 3D visualization of the wave function components.
+    """
     fig = go.Figure()
     fig.add_trace(go.Scatter3d(x=x, y=np.zeros_like(x), z=psi.real, mode='lines', name='Real Part'))
     fig.add_trace(go.Scatter3d(x=x, y=np.ones_like(x), z=psi.imag, mode='lines', name='Imaginary Part'))
@@ -73,8 +98,8 @@ x0 = st.sidebar.slider("Initial position (x0)", min_value=float(x_min), max_valu
 k0 = st.sidebar.slider("Initial momentum (k0)", min_value=0.0, max_value=10.0, value=5.0, step=0.1)
 sigma = st.sidebar.slider("Wave packet width (sigma)", min_value=0.1, max_value=5.0, value=1.0, step=0.1)
 
-k = st.sidebar.slider("Spring constant (k) for harmonic potential", min_value=0.1, max_value=10.0, value=1.0, step=0.1)
-V = 0.5 * k * x**2  # Harmonic potential
+k_potential = st.sidebar.slider("Spring constant (k) for harmonic potential", min_value=0.1, max_value=10.0, value=1.0, step=0.1)
+V = 0.5 * k_potential * x**2  # Harmonic potential
 
 dx = x[1] - x[0]
 time_steps = st.sidebar.number_input("Number of time steps", value=200, step=10)
@@ -120,7 +145,3 @@ if use_custom_potential:
             st.error("Custom potential must match the spatial grid size.")
     except Exception as e:
         st.error(f"Error in custom potential: {e}")
-
-# Conclusion
-st.header("Summary")
-st.write("This app demonstrates the evolution of a quantum wave function in a harmonic potential. You can modify parameters such as the initial wave packet, potential, and time evolution settings to explore different scenarios. Use the sidebar to adjust these settings and see the results dynamically.")
