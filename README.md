@@ -19,6 +19,9 @@ The **Wave Function Visualizer** is an interactive web application that simulate
   3. **Check Potential Validity**: Confirm that the potential matches the spatial grid size.
   4. **Refine Spatial Grid (`N`)**: A higher resolution can resolve finer details.
   5. **Solve the Issue**: Raise the issue and solve it, i will verify it and approve it ...
+  
+  ---{ Error Has Been Resolved}---
+  
 
 ## Requirements
 - Python 3.7 or higher
